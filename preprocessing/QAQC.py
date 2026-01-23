@@ -25,19 +25,16 @@ any issues in the data, or sites that need to be dropped.
 '''
 vars_to_plot = [
     "TA_F",
-    "SW_IN_F",
-    "VPD_F",
-    "P_F",
-    "GPP_NT_VUT_REF"
+    "P_F"
 ]
 
 for site in df.Site.unique():
     flux_data = df[(df['Site']==site)]
-    fig, ax = plt.subplots(3, 2, figsize=(10, 8))
+    fig, ax = plt.subplots(2, 1, figsize=(10, 8))
     ax = ax.flatten()
 
     for a, var in zip(ax, vars_to_plot):
-        a.scatter(flux_data.TIMESTAMP, flux_data[var], s=0.5)
+        a.scatter(flux_data.date, flux_data[var], s=0.5)
         a.set_title(f"{site} {var}", fontsize=7)
         a.set_xlabel("Date", fontsize=6)
         a.tick_params(axis='x', rotation=45, labelsize=6)
