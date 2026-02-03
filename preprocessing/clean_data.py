@@ -279,7 +279,7 @@ hist_data_adj.to_csv("/Users/marleeyork/Documents/project2/data/cleaned/historic
 swc_measures = ["SWC_F_MDS_1","SWC_F_MDS_2","SWC_F_MDS_3","SWC_F_MDS_4","SWC_F_MDS_5",
                 "SWC_F_MDS_1_QC","SWC_F_MDS_2_QC","SWC_F_MDS_3_QC","SWC_F_MDS_4_QC",
                 "SWC_F_MDS_5_QC"]
-shared_swc = find_shared_variables('/Users/marleeyork/Documents/project2/data/cleaned/AMF_DD.csv',swc_measures)
+shared_swc = find_shared_variables('/Users/marleeyork/Documents/project2/data/AMFdataDD',swc_measures)
 
 site_presence = shared_swc['site_presence']
 site_presence[site_presence['Site'].isin(['US-Ho1','US-Syv','US-Kon'])]

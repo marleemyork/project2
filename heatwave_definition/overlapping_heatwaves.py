@@ -68,6 +68,12 @@ def find_heatwave_overlap(min_heatwaves, max_heatwaves, avg_heatwaves):
             # Find the heatwave type with the highest composition 
             # This currently does not consider if there are multiple with the same percentage of one heatwave type
             top_heatwave = calc_top_heatwave(start_dates,end_dates,indicator_df.date,indicator_df.heatwave_categories)
+            
+            # Find the 3d composition of each heatwave
+            heatwaves3d = get_3dheatwave(top_heatwave, indicator_df)
+            
+            # Merge the cateogrical and 3d heatwave types
+            top_heatwave = pd.merge(top_heatwave,heatwaves3d,on=['start_dates','end_dates'],how='left')
             final_heatwaves[site]['heatwave_type'] = top_heatwave
             final_heatwaves[site]['heatwave_type_counts'] = top_heatwave.top_heatwave.value_counts()
         
@@ -227,5 +233,26 @@ def calc_top_heatwave(start_dates, end_dates, dates, heatwave_categories):
     })
 
 
+def get_3dheatwave(top_heatwave, indicator_df):
+    
+    heatwave_perc = pd.DataFrame(columns=['start_dates','end_dates',
+                                                 'Max_perc','Min_perc','Mean_perc'])
+    for i in range(0,len(top_heatwave)):
+        # Isolate a heatwave
+        hw = top_heatwave.iloc[i]
+        # Find the range of dates it covers
+        hw_date_range = pd.date_range(start=hw.start_dates,end=hw.end_dates)
+        # Pull the indicator data for those dates
+        hw_indicator = indicator_df[indicator_df.date.isin(hw_date_range)]
+        # Find percentage of each that is greater indicator that is not 0
+        max_percent = len(hw_indicator[hw_indicator.max_indicator > 0]) / len(hw_indicator)
+        min_percent = len(hw_indicator[hw_indicator.min_indicator > 0]) / len(hw_indicator)
+        avg_percent = len(hw_indicator[hw_indicator.avg_indicator > 0]) / len(hw_indicator)
+        # Organize results into a dataframe
+        new_hw = [hw.start_dates,hw.end_dates,max_percent,min_percent,avg_percent]
+        new_hw = pd.DataFrame([new_hw], columns=heatwave_perc.columns)
+        # Concat with overall dataframe
+        heatwave_perc = pd.concat([heatwave_perc,new_hw])
+    return heatwave_perc
 
 
