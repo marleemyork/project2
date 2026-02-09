@@ -44,7 +44,7 @@ badm = badm[badm.Site.isin(all_heatwaves_df.Site.unique())].reset_index()
 all_heatwaves_df = pd.merge(all_heatwaves_df,badm[['Site','CLIMATE_KOEPPEN','MAT']],on='Site',how='left')
 
 # Reduce df to the sites we are interested in 
-df = df[df.Site.isin(all_heatwaves_df.Site.unique())]\
+df = df[df.Site.isin(all_heatwaves_df.Site.unique())]
     
 # Load in soil water content data: we have swc for all of these sites
 swc = loadAMF("/Users/marleeyork/Documents/project2/data/AMFdataDD",measures=['TIMESTAMP','SWC_F_MDS_1'])
@@ -80,8 +80,7 @@ all_heatwaves_df["end_dates"] = pd.to_datetime(all_heatwaves_df.end_dates)
 df["date"] = pd.to_datetime(df.date)
 
 # Change flux names
-df = df.iloc[:,1:]
-df.columns = ['date','TA_F','SW_IN_F','VPD_F','P_F','NEE','RECO','GPP','Site','IGBP']
+df.columns = ['date','TA','SW','VPD','P','NEE','RECO','GPP','Site','IGBP','SWC']
 
 # Also reading in the min/max/mean heatwaves
 heatwave_df = pd.read_csv("/Users/marleeyork/Documents/project2/data/heatwaves/heatwaves_df.csv")
@@ -129,25 +128,25 @@ all_heatwaves_df = calc_flux_avg_multi_lag(flux_name = "NEE",
                                            after_lags = [5,10,15,20,25,30])
 
 # Calculating precipitation averages to include in the regression
-all_heatwaves_df = calc_flux_avg_multi_lag(flux_name = "P_F",
+all_heatwaves_df = calc_flux_avg_multi_lag(flux_name = "P",
                                            heatwaves_df = all_heatwaves_df,
                                            flux_df = df,
-                                           before_lags = [30,10],
+                                           before_lags = [90,30,10],
                                            after_lags = [5,10,15,20,25,30])
 
 # Calculating temperature averages to include as predictors in the regression
-all_heatwaves_df = calc_flux_avg_multi_lag(flux_name = "TA_F",
+all_heatwaves_df = calc_flux_avg_multi_lag(flux_name = "TA",
                                            heatwaves_df = all_heatwaves_df,
                                            flux_df = df,
-                                           before_lags = [30,10],
+                                           before_lags = [90,30,10],
                                            after_lags = [5,10,15,20,25,30]
                                            )
 
 # Calculating SWC averages to include as predictors in the regression
-all_heatwaves_df = calc_flux_avg_multi_lag(flux_name = "SWC_F_MDS_1",
+all_heatwaves_df = calc_flux_avg_multi_lag(flux_name = "SWC",
                                            heatwaves_df = all_heatwaves_df,
                                            flux_df = df,
-                                           before_lags = [30,10],
+                                           before_lags = [90,30,10],
                                            after_lags = [5,10,15,20,25,30]
                                            )
 
@@ -215,10 +214,15 @@ all_heatwaves_df["NEE_BA_std_20"] = all_heatwaves_df["NEE_after_std_20"] - all_h
 all_heatwaves_df["NEE_BA_std_25"] = all_heatwaves_df["NEE_after_std_25"] - all_heatwaves_df['NEE_before_std_10']
 all_heatwaves_df["NEE_BA_std_30"] = all_heatwaves_df["NEE_after_std_30"] - all_heatwaves_df['NEE_before_std_10']
 
+# Now I want a variable that looks at the difference in SWC from the past 10 days, past month, and past year
+all_heatwaves_df["SWC_shift_10"] = all_heatwaves_df["SWC_after_avg_5"] - all_heatwaves_df["SWC_before_avg_10"]
+all_heatwaves_df["SWC_shift_30"] = all_heatwaves_df["SWC_after_avg_5"] - all_heatwaves_df["SWC_before_avg_30"]
+all_heatwaves_df["SWC_shift_90"] = all_heatwaves_df["SWC_after_avg_5"] - all_heatwaves_df["SWC_before_avg_90"]
+
 # Now I want to add in a variable that looks at deviance of each during period from site MAT 
 # My hope is that this indicates seasonality!
 all_heatwaves_df['MAT'] = all_heatwaves_df['MAT'].astype('float')
-all_heatwaves_df["dev_from_MAT"] = all_heatwaves_df['MAT'] - all_heatwaves_df['TA_F_during_avg']
+all_heatwaves_df["dev_from_MAT"] = (all_heatwaves_df['MAT'] - all_heatwaves_df['TA_F_during_avg']) / all_heatwaves_df["MAT"]
 
 # Lets start by looking at distributions of some of our variables we are interested in
 sns.kdeplot(all_heatwaves_df[["GPP_BD_avg","GPP_BA_avg_5","GPP_BA_avg_10","GPP_BA_avg_15","GPP_BA_avg_20",
@@ -248,17 +252,41 @@ fig, ax = plt.subplots(1,1,figsize=(12,12))
 plt.scatter(all_heatwaves_df.duration,all_heatwaves_df.GPP_BD_avg,alpha=.3)
 plt.show()
 
+# Looking at the distribution of SWC shifts for heatwaves
+sns.kdeplot(all_heatwaves_df[["SWC_shift_10","SWC_shift_30","SWC_shift_90"]])
+
+plt.subplots()
+plt.axvline(0,c="red",linestyle="--")
+plt.axhline(0,c="red",linestyle="--")
+plt.scatter(all_heatwaves_df["SWC_shift_90"],all_heatwaves_df["SWC_shift_10"],s=.5,alpha=.5)
+plt.xlabel("Difference from 90 day mean")
+plt.ylabel("Difference from 10 day mean")
+plt.title("Difference in average SWC during heatwave")
+plt.show()
+
+plt.subplots()
+plt.axvline(0,c="red",linestyle="--")
+plt.axhline(0,c="red",linestyle="--")
+plt.scatter(all_heatwaves_df["SWC_shift_30"],all_heatwaves_df["SWC_shift_10"],s=.5,alpha=.5)
+plt.xlabel("Difference from 30 day mean")
+plt.ylabel("Difference from 10 day mean")
+plt.title("Difference in average SWC during heatwave")
+plt.show()
+
 ###############################################################################
 ##               Multipe Linear Regressions of Flux Differences              ##
 ###############################################################################
 # Regression for Before-During GPP average difference #########################
 GPP_avg_lin_mod = smf.ols(
-    formula="GPP_BD_avg ~ duration*Mean_perc + duration*Max_perc + P_F_before_avg_30 + P_F_during_avg*duration + TA_F_before_avg_10 + TA_F_during_avg + dev_from_MAT + SWC_F_MDS_1_before_avg_10 + SWC_F_MDS_1_during_std + SWC_F_MDS_1_during_avg + C(IGBP)",
+    formula="GPP_BD_avg ~ duration*Mean_perc + duration*Max_perc + P_before_avg_30 + P_during_avg*duration + TA_before_avg_10 + TA_during_avg + dev_from_MAT + SWC_before_avg_10 + SWC_during_std + SWC_during_avg + SWC_shift_10 + SWC_shift_30 + C(IGBP)",
     data=all_heatwaves_df
 ).fit()
 
 # Print model summaries
 print(GPP_avg_lin_mod.summary())
+
+# Find predicted values
+predicted1 = GPP_avg_lin_mod.predict()
 
 # Extract coefficients
 coef_table = GPP_avg_lin_mod.summary2().tables[1]
@@ -290,17 +318,28 @@ ax.legend()
 plt.show()
 
 # Q-Q Plot
-sm.qqplot(model.resid, line="45")
+sm.qqplot(GPP_avg_lin_mod.resid, line="45")
+plt.show()
+
+# Predicted vs observed results
+plt.subplots()
+plt.scatter(all_heatwaves_df.GPP_BD_avg,predicted1,s=.5,alpha=.5)
+plt.xlabel("True before-during GPP difference")
+plt.ylabel("Predicted before-during GPP difference")
+plt.plot([-5, 12], [-5, 12], color="red",linestyle="--",linewidth=.5)
 plt.show()
 
 # Regression for Before-During GPP std difference #############################
 model = smf.ols(
-    formula="GPP_BD_std ~ duration*Mean_perc + duration*Max_perc + P_F_before_avg_30 + P_F_during_avg*duration + TA_F_before_avg_10 + TA_F_during_avg + SWC_F_MDS_1_before_avg_10 + SWC_F_MDS_1_during_std + SWC_F_MDS_1_during_avg+ dev_from_MAT + C(IGBP)",
+    formula="GPP_BD_std ~ duration*Mean_perc + duration*Max_perc + P_before_avg_30 + P_during_avg*duration + TA_before_avg_10 + TA_during_avg + SWC_before_avg_10 + SWC_during_std + SWC_during_avg + SWC_shift_10 + SWC_shift_30+ dev_from_MAT + C(IGBP)",
     data=all_heatwaves_df
 ).fit()
 
 # Print model summaries
 print(model.summary())
+
+# Find predicted values
+predicted2 = model.predict()
 
 # Extract coefficients
 coef_table = model.summary2().tables[1]
@@ -310,9 +349,18 @@ print(coef_table)
 sm.qqplot(model.resid, line="45")
 plt.show()
 
+# Predicted vs observed results
+plt.subplots()
+plt.scatter(all_heatwaves_df.GPP_BD_std,predicted2,s=.5,alpha=.5)
+plt.xlabel("True before-during GPP std difference")
+plt.ylabel("Predicted before-during GPP std difference")
+plt.plot([-4, 2.5], [-4,2.5], color="red",linestyle="--",linewidth=.5)
+plt.show()
+
+
 # Regression for Before-During Reco avg difference ############################
 model = smf.ols(
-    formula="RECO_BD_avg ~ duration*Mean_perc + duration*Max_perc + P_F_before_avg_30 + P_F_during_avg*duration + TA_F_before_avg_10 + TA_F_during_avg + SWC_F_MDS_1_before_avg_10 + SWC_F_MDS_1_during_std + SWC_F_MDS_1_during_avg+ dev_from_MAT + C(IGBP)",
+    formula="RECO_BD_avg ~ duration*Mean_perc + duration*Max_perc + P_before_avg_30 + P_during_avg*duration + TA_before_avg_10 + TA_during_avg + SWC_before_avg_10 + SWC_during_std + SWC_during_avg + dev_from_MAT + C(IGBP)",
     data=all_heatwaves_df
 ).fit()
 

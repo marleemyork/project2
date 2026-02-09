@@ -12,6 +12,7 @@ import matplotlib.patches as mpatches
 import numpy as np
 from datetime import datetime, timedelta
 from scipy import stats
+import visualization_functions
 
 # Lets load in the data
 all_heatwaves_df = pd.read_csv("/Users/marleeyork/Documents/project2/data/heatwaves/all_heatwaves_df.csv")
@@ -139,6 +140,123 @@ t_BD_NEE, p_BD_NEE = stats.ttest_rel(all_heatwaves_df.NEE_before_avg,
 GPP_means = all_heatwaves_df.groupby('top_heatwave')[['GPP_before_avg','GPP_during_avg','GPP_after_avg']].mean().reset_index()
 RECO_means = all_heatwaves_df.groupby('top_heatwave')[['RECO_before_avg','RECO_during_avg','RECO_after_avg']].mean().reset_index()
 NEE_means = all_heatwaves_df.groupby('top_heatwave')[['NEE_before_avg','NEE_during_avg','NEE_after_avg']].mean().reset_index()
+
+# Trying this with multiple tests for each flux
+tests_GPP_avg = [
+    ("GPP_before_avg_10", "GPP_during_avg",  "BD_GPP"),
+    ("GPP_before_avg_10", "GPP_after_avg_5", "BA_5_GPP"),
+    ("GPP_before_avg_10", "GPP_after_avg_10",  "BA_10_GPP"),
+    ("GPP_before_avg_10", "GPP_after_avg_15",  "BA_15_GPP"),
+    ("GPP_before_avg_10", "GPP_after_avg_20",  "BA_20_GPP"),
+    ("GPP_before_avg_10", "GPP_after_avg_25",  "BA_25_GPP"),
+    ("GPP_before_avg_10", "GPP_after_avg_30",  "BA_30_GPP")
+]
+
+tests_GPP_std = [
+    ("GPP_before_std_10", "GPP_during_std",  "BD_GPP"),
+    ("GPP_before_std_10", "GPP_after_std_5", "BA_5_GPP"),
+    ("GPP_before_std_10", "GPP_after_std_10",  "BA_10_GPP"),
+    ("GPP_before_std_10", "GPP_after_std_15",  "BA_15_GPP"),
+    ("GPP_before_std_10", "GPP_after_std_20",  "BA_20_GPP"),
+    ("GPP_before_std_10", "GPP_after_std_25",  "BA_25_GPP"),
+    ("GPP_before_std_10", "GPP_after_std_30",  "BA_30_GPP") 
+]
+
+tests_RECO_avg = [
+    ("RECO_before_avg_10", "RECO_during_avg",  "BD_RECO"),
+    ("RECO_before_avg_10", "RECO_after_avg_5", "BA_5_RECO"),
+    ("RECO_before_avg_10", "RECO_after_avg_10",  "BA_10_RECO"),
+    ("RECO_before_avg_10", "RECO_after_avg_15",  "BA_15_RECO"),
+    ("RECO_before_avg_10", "RECO_after_avg_20",  "BA_20_RECO"),
+    ("RECO_before_avg_10", "RECO_after_avg_25",  "BA_25_RECO"),
+    ("RECO_before_avg_10", "RECO_after_avg_30",  "BA_30_RECO")
+]
+
+tests_RECO_std = [
+    ("RECO_before_std_10", "RECO_during_std",  "BD_RECO"),
+    ("RECO_before_std_10", "RECO_after_std_5", "BA_5_RECO"),
+    ("RECO_before_std_10", "RECO_after_std_10",  "BA_10_RECO"),
+    ("RECO_before_std_10", "RECO_after_std_15",  "BA_15_RECO"),
+    ("RECO_before_std_10", "RECO_after_std_20",  "BA_20_RECO"),
+    ("RECO_before_std_10", "RECO_after_std_25",  "BA_25_RECO"),
+    ("RECO_before_std_10", "RECO_after_std_30",  "BA_30_RECO") 
+]
+
+tests_NEE_avg = [
+    ("NEE_before_avg_10", "NEE_during_avg",  "BD_NEE"),
+    ("NEE_before_avg_10", "NEE_after_avg_5", "BA_5_NEE"),
+    ("NEE_before_avg_10", "NEE_after_avg_10",  "BA_10_NEE"),
+    ("NEE_before_avg_10", "NEE_after_avg_15",  "BA_15_NEE"),
+    ("NEE_before_avg_10", "NEE_after_avg_20",  "BA_20_NEE"),
+    ("NEE_before_avg_10", "NEE_after_avg_25",  "BA_25_NEE"),
+    ("NEE_before_avg_10", "NEE_after_avg_30",  "BA_30_NEE")
+]
+
+tests_NEE_std = [
+    ("NEE_before_std_10", "NEE_during_std",  "BD_NEE"),
+    ("NEE_before_std_10", "NEE_after_std_5", "BA_5_NEE"),
+    ("NEE_before_std_10", "NEE_after_std_10",  "BA_10_NEE"),
+    ("NEE_before_std_10", "NEE_after_std_15",  "BA_15_NEE"),
+    ("NEE_before_std_10", "NEE_after_std_20",  "BA_20_NEE"),
+    ("NEE_before_std_10", "NEE_after_std_25",  "BA_25_NEE"),
+    ("NEE_before_std_10", "NEE_after_std_30",  "BA_30_NEE") 
+]
+
+def run_tests(g, tests):
+    out = {}
+    for a, b, tag in tests:
+        t, p = stats.ttest_rel(g[a], g[b], nan_policy="omit")
+        out[f"t_{tag}"] = t
+        out[f"p_{tag}"] = p
+    return pd.Series(out)
+
+GPP_avg_ttests = (
+    all_heatwaves_df
+      .groupby("top_heatwave")
+      .apply(run_tests, tests_GPP_avg)
+      .reset_index()
+)
+GPP_avg_ttests.to_clipboard(index=False)
+
+GPP_std_ttests = (
+    all_heatwaves_df
+      .groupby("top_heatwave")
+      .apply(run_tests, tests_GPP_std)
+      .reset_index()
+)
+GPP_std_ttests.to_clipboard(index=False)
+
+RECO_avg_ttests = (
+    all_heatwaves_df
+      .groupby("top_heatwave")
+      .apply(run_tests, tests_RECO_avg)
+      .reset_index()
+)
+RECO_avg_ttests.to_clipboard(index=False)
+
+RECO_std_ttests = (
+    all_heatwaves_df
+      .groupby("top_heatwave")
+      .apply(run_tests, tests_RECO_std)
+      .reset_index()
+)
+RECO_std_ttests.to_clipboard(index=False)
+
+NEE_avg_ttests = (
+    all_heatwaves_df
+      .groupby("top_heatwave")
+      .apply(run_tests, tests_NEE_avg)
+      .reset_index()
+)
+NEE_avg_ttests.to_clipboard(index=False)
+
+NEE_std_ttests = (
+    all_heatwaves_df
+      .groupby("top_heatwave")
+      .apply(run_tests, tests_NEE_std)
+      .reset_index()
+)
+NEE_std_ttests.to_clipboard(index=False)
 
 # Now calculating the paired t-tests for these
 
@@ -339,6 +457,116 @@ NEE_std.to_clipboard(index=False)
 ###############################################################################
 #   Boxplots off flux periods across all types of heatwaves
 ###############################################################################
+
+# Avg GPP difference, night intensified heatwaves
+night_int = all_heatwaves_df[all_heatwaves_df.top_heatwave=="Night-intensified"]
+multi_boxplots(night_int,value_cols=['GPP_before_avg_10','GPP_during_avg','GPP_after_avg_10',
+                                     'GPP_after_avg_15','GPP_after_avg_20','GPP_after_avg_25',
+                                     'GPP_after_avg_30'],category_col=[],title="GPP Avg for Night-Intensified")
+
+# Avg GPP difference, before-during for day, overall, and triad heatwaves
+GPP_diff_df = all_heatwaves_df[all_heatwaves_df.top_heatwave.isin(["Day","Overall","Triad"])]
+multi_boxplots_grouped(df=GPP_diff_df,
+                       value_cols=["GPP_before_avg_10","GPP_during_avg"],
+                       category_col="top_heatwave",
+                       title="Before-During GPP Avg",
+                       figsize=(6,6)
+                       )
+
+# Avg Reco difference, before-during for all heatwave types
+multi_boxplots_grouped(df=all_heatwaves_df,
+                       value_cols=["RECO_before_avg_10","RECO_during_avg"],
+                       category_col="top_heatwave",
+                       title="Before-During RECO Avg",
+                       figsize=(12,6)
+                       )
+
+# Average Reco difference, Night-intensified across timescales
+night_int = all_heatwaves_df[all_heatwaves_df.top_heatwave=="Night-intensified"]
+multi_boxplots(night_int,value_cols=['RECO_before_avg_10','RECO_during_avg','RECO_after_avg_10',
+                                     'RECO_after_avg_15','RECO_after_avg_20','RECO_after_avg_25',
+                                     'RECO_after_avg_30'],category_col=[],title="RECO Avg for Night-Intensified")
+
+# Average Reco difference, Overall across timescales
+overall_int = all_heatwaves_df[all_heatwaves_df.top_heatwave=="Overall"]
+multi_boxplots(overall_int,value_cols=['RECO_before_avg_10','RECO_during_avg','RECO_after_avg_10',
+                                     'RECO_after_avg_15','RECO_after_avg_20','RECO_after_avg_25',
+                                     'RECO_after_avg_30'],category_col=[],title="RECO Avg for Overall")
+
+# STD GPP difference, before-during for all heatwave types
+multi_boxplots_grouped(df=all_heatwaves_df,
+                       value_cols=["GPP_before_avg_10","GPP_during_avg"],
+                       category_col="top_heatwave",
+                       title="Before-During GPP std",
+                       figsize=(12,6)
+                       )
+
+multi_boxplots_grouped(df=all_heatwaves_df,
+                       value_cols=["RECO_before_avg_10","RECO_during_avg"],
+                       category_col="top_heatwave",
+                       title="Before-During RECO std",
+                       figsize=(12,6)
+                       )
+
+multi_boxplots_grouped(df=all_heatwaves_df,
+                       value_cols=["NEE_before_avg_10","NEE_during_avg"],
+                       category_col="top_heatwave",
+                       title="Before-During RECO std",
+                       figsize=(12,6)
+                       )
+
+# STD RECO difference, Day across timescales
+day = all_heatwaves_df[all_heatwaves_df.top_heatwave=="Day"]
+day_long = day[day.duration >=10]
+multi_boxplots(day,value_cols=['RECO_before_std_10','RECO_during_std','RECO_after_std_10',
+                                   'RECO_after_std_15','RECO_after_std_20','RECO_after_std_25',
+                                   'RECO_after_std_30'],category_col=[],title="RECO Std for Day Across Timescales",
+               showfliers=False)
+
+# STD RECO difference, Day-intensified timescales
+day_int = all_heatwaves_df[all_heatwaves_df.top_heatwave=="Day-intensified"]
+multi_boxplots(day_int,value_cols=['RECO_before_std_10','RECO_during_std','RECO_after_std_10',
+                                   'RECO_after_std_15','RECO_after_std_20','RECO_after_std_25',
+                                   'RECO_after_std_30'],category_col=[],title="RECO Std for Day Across Timescales",
+               showfliers=False)
+
+# STD RECO difference, Day-Night Spike timescales
+day_night = all_heatwaves_df[all_heatwaves_df.top_heatwave=="Day-Night Spike"]
+multi_boxplots(day_night,value_cols=['RECO_before_std_10','RECO_during_std','RECO_after_std_10',
+                                   'RECO_after_std_15','RECO_after_std_20','RECO_after_std_25',
+                                   'RECO_after_std_30'],category_col=[],title="RECO Std for Day Across Timescales",
+               showfliers=False)
+
+# STD GPP during heatwave by duration, across all heatwaves
+multi_boxplots_grouped(df=all_heatwaves_df[all_heatwaves_df.duration < 18],
+                       value_cols=["GPP_before_std_10","GPP_during_std","GPP_after_std_10","GPP_after_std_30"],
+                       category_col="duration",
+                       title="GPP STD Difference by Duration",
+                       figsize=(12,6))
+
+
+# STD RECO during heatwave by duration, across all heatwaves
+multi_boxplots_grouped(df=all_heatwaves_df[all_heatwaves_df.duration<18],
+                       value_cols=["RECO_before_std_10","RECO_during_std","RECO_after_std_10","RECO_after_std_30"],
+                       category_col="duration",
+                       title="GPP STD Difference by Duration",
+                       figsize=(12,4),
+                       showfliers=False)
+
+multi_boxplots_grouped(df=all_heatwaves_df[all_heatwaves_df.duration<18],
+                       value_cols=["RECO_before_std_10","RECO_during_std","RECO_after_std_10","RECO_after_std_30"],
+                       category_col="duration",
+                       title="GPP STD Difference by Duration",
+                       figsize=(12,4),
+                       showfliers=True)
+
+
+all_heatwaves_df["during_perc_GPP_change"] = all_heatwaves_df["GPP_BD_avg"] / all_heatwaves_df["GPP_during_avg"]
+all_heatwaves_df["during_perc_RECO_change"] = all_heatwaves_df["RECO_BD_avg"] / all_heatwaves_df["RECO_during_avg"]
+all_heatwaves_df["during_perc_NEE_change"] = all_heatwaves_df["NEE_BD_avg"] / all_heatwaves_df["NEE_during_avg"]
+
+all_heatwaves_df.groupby("top_heatwave")[["during_perc_GPP_change","during_perc_RECO_change","during_perc_NEE_change"]].mean()
+
 
 # STARTING WITH RECO ##########################################################
 categories = all_heatwaves_df["top_heatwave"].unique()
