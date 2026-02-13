@@ -45,6 +45,54 @@ df.loc[df.NEE==-9999,'NEE'] = pd.NA
 # Now replace negative GPP with 0
 df.loc[df.GPP<0, 'GPP'] = 0
 
+# Calculating deviance from the expected flux
+# Calculations for average flux before, during, and after heatwave are later in the script
+df = add_heatwave_indicator(df,all_heatwaves_df)
+df = DOY_climatology(df,var_name="GPP",smoothing_function="weighted_15")
+df = DOY_climatology(df,var_name="RECO",smoothing_function="weighted_15")
+df = DOY_climatology(df,var_name="NEE",smoothing_function="weighted_15")
+
+# Calculating  a standardized deviance
+df["GPP_dev"] = (df["GPP"] - df["expected_GPP"]) / df["expected_GPP"]
+df["RECO_dev"] = (df["RECO"] - df["expected_RECO"]) / df["expected_RECO"]
+df["NEE_dev"] = (df["NEE"] - df["expected_NEE"]) / df["expected_NEE"]
+
+###############################################################################
+#   Working with dviance from expected flux
+###############################################################################
+
+# Plotting the difference between non-heatwave DOY average and our smoothed
+# expected values
+for site in df.Site.unique():
+    
+    site_df = df[df.Site==site]
+    fig, ax = plt.subplots(3,1, figsize=(6,12))
+    ax = ax.flatten()
+    ax[0].plot(site_df.DOY,site_df.DOY_GPP,label="Daily Mean",c="blue")
+    ax[0].plot(site_df.DOY,site_df.expected_GPP,label="Smoothed Expected Value",c="red")
+    ax[0].legend()
+    ax[0].set_ylabel("GPP")
+    
+    ax[1].plot(site_df.DOY,site_df.DOY_RECO,label="Daily Mean",c="blue")
+    ax[1].plot(site_df.DOY,site_df.expected_RECO,label="Smoothed Expected Value",c="red")
+    ax[1].set_xlabel("DOY")
+    ax[1].set_ylabel("RECO")
+    
+    ax[2].plot(site_df.DOY,site_df.DOY_NEE,label="Daily Mean",c="blue")
+    ax[2].plot(site_df.DOY,site_df.expected_NEE,label="Smoothed Expected Value",c="red")
+    ax[2].set_xlabel("DOY")
+    ax[2].set_ylabel("NEE")
+    
+    
+    plt.title(f"{site}")
+    plt.show()
+    
+    input("Press [enter] for next site..")
+    
+# Plotting deviation over time
+    
+
+
 ###############################################################################
 #   Visualizing a single heatwave
 ###############################################################################
