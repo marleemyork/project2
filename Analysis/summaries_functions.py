@@ -5,6 +5,7 @@ for multiple lags.
 '''
 from datetime import datetime, timedelta
 import pandas as pd
+import numpy as np
 
 def calc_flux_avg(flux_name, heatwaves_df, flux_df, before_lag, after_lag):
     """
@@ -200,10 +201,11 @@ def DOY_climatology(df, var_name, smoothing_function="weighted_15"):
     
     # Loop through each site
     for site in df.Site.unique():
-        site_df = nohw_df[nohw_df.Site==site]
+        site_df_nohw = nohw_df[nohw_df.Site==site]
+        site_df = df[df.Site==site]
         
         # Calculate mean flux for each DOY
-        expected_value = site_df.groupby('DOY')[var_name].mean().reset_index()
+        expected_value = site_df_nohw.groupby('DOY')[var_name].mean().reset_index()
         expected_value.columns = ["DOY", "DOY_"+var_name]
         
         # Now we want to smooth this

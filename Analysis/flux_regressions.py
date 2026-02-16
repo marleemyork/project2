@@ -197,7 +197,6 @@ all_heatwaves_df["GPP_BA_std_20"] = all_heatwaves_df["GPP_after_std_20"] - all_h
 all_heatwaves_df["GPP_BA_std_25"] = all_heatwaves_df["GPP_after_std_25"] - all_heatwaves_df['GPP_before_std_10']
 all_heatwaves_df["GPP_BA_std_30"] = all_heatwaves_df["GPP_after_std_30"] - all_heatwaves_df['GPP_before_std_10']
 
-
 all_heatwaves_df["RECO_BD_std"] = all_heatwaves_df['RECO_during_std'] - all_heatwaves_df['RECO_before_std_10']
 all_heatwaves_df["RECO_BA_std_5"] = all_heatwaves_df["RECO_after_std_5"] - all_heatwaves_df['RECO_before_std_10']
 all_heatwaves_df["RECO_BA_std_10"] = all_heatwaves_df["RECO_after_std_10"] - all_heatwaves_df['RECO_before_std_10']
@@ -218,6 +217,22 @@ all_heatwaves_df["NEE_BA_std_30"] = all_heatwaves_df["NEE_after_std_30"] - all_h
 all_heatwaves_df["SWC_shift_10"] = all_heatwaves_df["SWC_after_avg_5"] - all_heatwaves_df["SWC_before_avg_10"]
 all_heatwaves_df["SWC_shift_30"] = all_heatwaves_df["SWC_after_avg_5"] - all_heatwaves_df["SWC_before_avg_30"]
 all_heatwaves_df["SWC_shift_90"] = all_heatwaves_df["SWC_after_avg_5"] - all_heatwaves_df["SWC_before_avg_90"]
+
+# Calculating symmetric percent change
+def symmetric_percent_change(before, after):
+    before = np.asarray(before, dtype=float)
+    after  = np.asarray(after, dtype=float)
+    denom = (np.abs(before) + np.abs(after)) / 2
+    out = 100 * (after - before) / denom
+    out = np.where(denom == 0, 0.0, out)  # both zero -> 0 change
+    return out
+
+all_heatwaves_df['GPP_BD_std_perc'] = symmetric_percent_change(all_heatwaves_df.GPP_before_std_10,all_heatwaves_df.GPP_during_std)
+all_heatwaves_df['RECO_BD_std_perc'] = symmetric_percent_change(all_heatwaves_df.RECO_before_std_10,all_heatwaves_df.RECO_during_std)
+
+# Now we can see symmetric percent changes in std of fluxes before and during the event
+all_heatwaves_df.GPP_BD_std_perc.mean()
+all_heatwaves_df.RECO_BD_std_perc.mean()
 
 # Now I want to add in a variable that looks at deviance of each during period from site MAT 
 # My hope is that this indicates seasonality!
