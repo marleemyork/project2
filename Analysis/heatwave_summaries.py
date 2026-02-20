@@ -45,28 +45,35 @@ df.loc[df.NEE==-9999,'NEE'] = pd.NA
 # Now replace negative GPP with 0
 df.loc[df.GPP<0, 'GPP'] = 0
 
+# Reduce df to just those sites we have full heatwave classification for
+df = df[df.Site.isin(all_heatwaves_df.Site.unique())]
+
 # Calculating deviance from the expected flux
 # Calculations for average flux before, during, and after heatwave are later in the script
 df = add_heatwave_indicator(df,all_heatwaves_df)
-df = DOY_climatology(df,var_name="GPP",smoothing_function="weighted_15")
-df = DOY_climatology(df,var_name="RECO",smoothing_function="weighted_15")
-df = DOY_climatology(df,var_name="NEE",smoothing_function="weighted_15")
+df = DOY_climatology(df,var_name="GPP",smoothing_function="weighted_25")
+df = DOY_climatology(df,var_name="RECO",smoothing_function="weighted_25")
+df = DOY_climatology(df,var_name="NEE",smoothing_function="weighted_25")
 
-# Calculating  a standardized deviance
-df["GPP_dev"] = (df["GPP"] - df["expected_GPP"]) / df["expected_GPP"]
-df["RECO_dev"] = (df["RECO"] - df["expected_RECO"]) / df["expected_RECO"]
-df["NEE_dev"] = (df["NEE"] - df["expected_NEE"]) / df["expected_NEE"]
+# Calculate heatwave deviance using symmetric percent change
+df["GPP_dev"] = symmetric_dev_calc(observed=df["GPP"],expected=df["expected_GPP"])
+df["RECO_dev"] = symmetric_dev_calc(observed=df["RECO"],expected=df["expected_RECO"])
+df["NEE_dev"] = symmetric_dev_calc(observed=df["NEE"],expected=df["expected_NEE"])
 
 # Calculating the total deviance for each heatwave, and for 10 days prior to heatwave
 all_heatwaves_df["GPP_cum_dev"] = [pd.NA] * len(all_heatwaves_df)
 all_heatwaves_df["RECO_cum_dev"] = [pd.NA] * len(all_heatwaves_df)
+all_heatwaves_df["NEE_cum_dev"] = [pd.NA] * len(all_heatwaves_df)
 all_heatwaves_df["GPP_mean_dev"] = [pd.NA] * len(all_heatwaves_df)
 all_heatwaves_df["RECO_mean_dev"] = [pd.NA] * len(all_heatwaves_df)
+all_heatwaves_df["NEE_mean_dev"] = [pd.NA] * len(all_heatwaves_df)
 
-all_heatwaves_df["GPP_cum_dev_prior"] = [pd.NA] * len(all_heatwaves_df)
-all_heatwaves_df["RECO_cum_dev_prior"] = [pd.NA] * len(all_heatwaves_df)
-all_heatwaves_df["GPP_mean_dev_prior"] = [pd.NA] * len(all_heatwaves_df)
-all_heatwaves_df["RECO_mean_dev_prior"] = [pd.NA] * len(all_heatwaves_df)
+all_heatwaves_df["GPP_cum_dev_10"] = [pd.NA] * len(all_heatwaves_df)
+all_heatwaves_df["RECO_cum_dev_10"] = [pd.NA] * len(all_heatwaves_df)
+all_heatwaves_df["NEE_cum_dev_10"] = [pd.NA] * len(all_heatwaves_df)
+all_heatwaves_df["GPP_mean_dev_10"] = [pd.NA] * len(all_heatwaves_df)
+all_heatwaves_df["RECO_mean_dev_10"] = [pd.NA] * len(all_heatwaves_df)
+all_heatwaves_df["NEE_mean_dev_10"] = [pd.NA] * len(all_heatwaves_df)
 
 for idx,row in all_heatwaves_df.iterrows():
     # Select start and end dates for heatwave and same length of days but ten days prior
@@ -86,17 +93,22 @@ for idx,row in all_heatwaves_df.iterrows():
     # Calculate cumulative and mean deviation for GPP and RECO
     all_heatwaves_df.loc[idx,"GPP_cum_dev"] = this_hw.GPP_dev.sum()
     all_heatwaves_df.loc[idx,"RECO_cum_dev"] = this_hw.RECO_dev.sum()
+    all_heatwaves_df.loc[idx,"NEE_cum_dev"] = this_hw.NEE_dev.sum()
     all_heatwaves_df.loc[idx,"GPP_mean_dev"] = this_hw.GPP_dev.mean()
     all_heatwaves_df.loc[idx,"RECO_mean_dev"] = this_hw.RECO_dev.mean()
+    all_heatwaves_df.loc[idx,"NEE_mean_dev"] = this_hw.NEE_dev.mean()
     
     all_heatwaves_df.loc[idx,"GPP_cum_dev_10"] = before_hw.GPP_dev.sum()
     all_heatwaves_df.loc[idx,"RECO_cum_dev_10"] = before_hw.RECO_dev.sum()
+    all_heatwaves_df.loc[idx,"NEE_cum_dev_10"] = before_hw.NEE_dev.sum()
     all_heatwaves_df.loc[idx,"GPP_mean_dev_10"] = before_hw.GPP_dev.mean()
     all_heatwaves_df.loc[idx,"RECO_mean_dev_10"] = before_hw.RECO_dev.mean()
+    all_heatwaves_df.loc[idx,"NEE_mean_dev_10"] = before_hw.NEE_dev.mean()
 
 # Now we can compare deviance in heatwaves before and during heatwaves
-
-
+all_heatwaves_df["GPP_mean_dev_diff"] = all_heatwaves_df["GPP_mean_dev"] - all_heatwaves_df["GPP_mean_dev_10"]
+all_heatwaves_df["RECO_mean_dev_diff"] = all_heatwaves_df["RECO_mean_dev"] - all_heatwaves_df["RECO_mean_dev_10"]
+all_heatwaves_df["NEE_mean_dev_diff"] = all_heatwaves_df["NEE_mean_dev"] - all_heatwaves_df["NEE_mean_dev_10"]
 
 ###############################################################################
 #   Working with deviance from expected flux
@@ -147,9 +159,54 @@ plt.subplots()
 plt.scatter(all_heatwaves_df.start_dates,all_heatwaves_df.RECO_mean_dev,s=.5)
 plt.show()
 
-# Making some initial tables of this
-all_heatwaves_df.groupby("top_heatwave")[['GPP_mean_dev','GPP_cum_dev','RECO_mean_dev','RECO_cum_dev']].mean().reset_index()
+# Plot density plots: maybe I could do a z-test?
+sns.kdeplot(all_heatwaves_df.GPP_mean_dev)
+sns.kdeplot(all_heatwaves_df.RECO_mean_dev)
 
+# Looking at deivance across all heatwaves
+sns.kdeplot(all_heatwaves_df.GPP_mean_dev, label="During")
+sns.kdeplot(all_heatwaves_df.GPP_mean_dev_10, label="Before")
+sns.kdeplot(all_heatwaves_df.GPP_mean_dev - all_heatwaves_df[all_heatwaves_df.top_heatwave=="Triad"].GPP_mean_dev_10, label="Difference", linestyle="--", color="red")
+plt.title("Mean GPP deviance: Prior to and during heatwave event")
+plt.legend()
+# plt.xlim(-5,15)
+plt.show()
+
+sns.kdeplot(all_heatwaves_df.RECO_mean_dev, label="During")
+sns.kdeplot(all_heatwaves_df.RECO_mean_dev_10, label="Before")
+sns.kdeplot(all_heatwaves_df.RECO_mean_dev - all_heatwaves_df[all_heatwaves_df.top_heatwave=="Triad"].RECO_mean_dev_10, label="Difference", linestyle="--", color="red")
+plt.title("Mean RECO deviance: Prior to and during heatwave event")
+plt.xlim(-5,6)
+plt.legend()
+plt.show()
+
+sns.kdeplot(all_heatwaves_df.RECO_mean_dev, label="During")
+sns.kdeplot(all_heatwaves_df.RECO_mean_dev_10, label="Before")
+sns.kdeplot(all_heatwaves_df.RECO_mean_dev - all_heatwaves_df[all_heatwaves_df.top_heatwave=="Triad"].RECO_mean_dev_10, label="Difference", linestyle="--", color="red")
+plt.title("Mean NEE deviance: Prior to and during heatwave event")
+plt.xlim(-5,6)
+plt.legend()
+plt.show()
+
+# Looking at differences in deviation distributions for triad heatwaves specifically
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Triad"].NEE_mean_dev, label="During")
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Triad"].NEE_mean_dev_10, label="Before")
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Triad"].NEE_mean_dev - all_heatwaves_df[all_heatwaves_df.top_heatwave=="Triad"].GPP_mean_dev_10, label="Difference", linestyle="--", color="red")
+plt.title("Triad Mean NEE deviance: Prior to and during heatwave event")
+plt.legend()
+plt.show()
+
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Triad"].RECO_mean_dev, label="During")
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Triad"].RECO_mean_dev_10, label="Before")
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Triad"].RECO_mean_dev - all_heatwaves_df[all_heatwaves_df.top_heatwave=="Triad"].RECO_mean_dev_10, label="Difference", linestyle="--", color="red")
+plt.title("Triad Mean RECO deviance: Prior to and during heatwave event")
+plt.legend()
+plt.show()
+
+# Making some initial tables of this
+all_heatwaves_df.groupby("top_heatwave")[['GPP_mean_dev_10','GPP_mean_dev']].mean().reset_index()
+all_heatwaves_df.groupby("top_heatwave")[["RECO_mean_dev_10","RECO_mean_dev"]].mean().reset_index()
+all_heatwaves_df.groupby("top_heatwave")[["NEE_mean_dev_10","NEE_mean_dev"]].mean().reset_
 # I need to compare this deviance to deviance outside of heatwaves
 
 
