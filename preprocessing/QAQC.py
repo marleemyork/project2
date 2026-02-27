@@ -14,6 +14,7 @@ Also, we need PRISM data for Canada too.
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
+import numpy as np
 pd.set_option("display.max_rows", 150)
 
 ###############################################################################
@@ -831,3 +832,41 @@ struggling_sites = ['US-EA6','US-EA5','US-xSR','US-CGG','US-xYE','CA-TPD']
 final_sites = pd.DataFrame({"Site":heatwaves.keys()})
 final_sites.to_csv("final_site_list.csv")
 
+###############################################################################
+##                                GPP QAQC                                   ##
+###############################################################################
+
+# Add heatwave indicator. This is from Analysis/heatwaves_summaries.py
+df = add_heatwave_indicator(df,all_heatwaves_df)
+
+# Read in the csv for those sites that have all 3 heatwave types
+for site in df.Site.unique():
+    
+    site_data = df[df.Site==site]
+    site_hw = df[(df.heatwave_indicator==1) & (df.Site==site)]
+    
+    plt.subplots()
+
+    # Scatter
+    plt.scatter(site_data.TA_F, site_data.GPP, s=.5, alpha=.5)
+    plt.scatter(site_hw.TA_F,site_hw.GPP,s=.5,c="orange")
+
+    # Fit linear regression
+    x = site_data.TA_F.values
+    y = site_data.GPP.values
+    
+    mask = ~np.isnan(x) & ~np.isnan(y)   # important if flux data has NA
+    m, b = np.polyfit(x[mask], y[mask], 1)
+
+    # Regression line
+    x_line = np.linspace(x[mask].min(), x[mask].max(), 100)
+    y_line = m * x_line + b
+    plt.plot(x_line, y_line, c="red")
+
+    plt.title(site)
+    plt.xlabel("Temperature")
+    plt.ylabel("GPP")
+    plt.show()
+
+    print(f"Slope: {m}, Intercept: {b}")
+    input("Press [enter] to continue...")

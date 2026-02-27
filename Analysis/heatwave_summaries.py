@@ -13,6 +13,8 @@ import numpy as np
 from datetime import datetime, timedelta
 from scipy import stats
 import visualization_functions
+import seaborn as sns
+
 
 # Lets load in the data
 all_heatwaves_df = pd.read_csv("/Users/marleeyork/Documents/project2/data/heatwaves/all_heatwaves_df.csv")
@@ -162,11 +164,13 @@ plt.show()
 # Plot density plots: maybe I could do a z-test?
 sns.kdeplot(all_heatwaves_df.GPP_mean_dev)
 sns.kdeplot(all_heatwaves_df.RECO_mean_dev)
+sns.kdeplot(all_heatwaves_df.NEE_mean_dev)
+
 
 # Looking at deivance across all heatwaves
 sns.kdeplot(all_heatwaves_df.GPP_mean_dev, label="During")
 sns.kdeplot(all_heatwaves_df.GPP_mean_dev_10, label="Before")
-sns.kdeplot(all_heatwaves_df.GPP_mean_dev - all_heatwaves_df[all_heatwaves_df.top_heatwave=="Triad"].GPP_mean_dev_10, label="Difference", linestyle="--", color="red")
+sns.kdeplot(all_heatwaves_df.GPP_mean_dev - all_heatwaves_df[all_heatwaves_df.top_heatwave=="Triad"].GL|PP_mean_dev_10, label="Difference", linestyle="--", color="red")
 plt.title("Mean GPP deviance: Prior to and during heatwave event")
 plt.legend()
 # plt.xlim(-5,15)
@@ -180,9 +184,9 @@ plt.xlim(-5,6)
 plt.legend()
 plt.show()
 
-sns.kdeplot(all_heatwaves_df.RECO_mean_dev, label="During")
-sns.kdeplot(all_heatwaves_df.RECO_mean_dev_10, label="Before")
-sns.kdeplot(all_heatwaves_df.RECO_mean_dev - all_heatwaves_df[all_heatwaves_df.top_heatwave=="Triad"].RECO_mean_dev_10, label="Difference", linestyle="--", color="red")
+sns.kdeplot(all_heatwaves_df.NEE_mean_dev, label="During")
+sns.kdeplot(all_heatwaves_df.NEE_mean_dev_10, label="Before")
+sns.kdeplot(all_heatwaves_df.NEE_mean_dev - all_heatwaves_df[all_heatwaves_df.top_heatwave=="Triad"].NEE_mean_dev_10, label="Difference", linestyle="--", color="red")
 plt.title("Mean NEE deviance: Prior to and during heatwave event")
 plt.xlim(-5,6)
 plt.legend()
@@ -191,7 +195,7 @@ plt.show()
 # Looking at differences in deviation distributions for triad heatwaves specifically
 sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Triad"].NEE_mean_dev, label="During")
 sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Triad"].NEE_mean_dev_10, label="Before")
-sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Triad"].NEE_mean_dev - all_heatwaves_df[all_heatwaves_df.top_heatwave=="Triad"].GPP_mean_dev_10, label="Difference", linestyle="--", color="red")
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Triad"].NEE_mean_dev - all_heatwaves_df[all_heatwaves_df.top_heatwave=="Triad"].NEE_mean_dev_10, label="Difference", linestyle="--", color="red")
 plt.title("Triad Mean NEE deviance: Prior to and during heatwave event")
 plt.legend()
 plt.show()
@@ -203,12 +207,88 @@ plt.title("Triad Mean RECO deviance: Prior to and during heatwave event")
 plt.legend()
 plt.show()
 
-# Making some initial tables of this
-all_heatwaves_df.groupby("top_heatwave")[['GPP_mean_dev_10','GPP_mean_dev']].mean().reset_index()
-all_heatwaves_df.groupby("top_heatwave")[["RECO_mean_dev_10","RECO_mean_dev"]].mean().reset_index()
-all_heatwaves_df.groupby("top_heatwave")[["NEE_mean_dev_10","NEE_mean_dev"]].mean().reset_
-# I need to compare this deviance to deviance outside of heatwaves
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Triad"].GPP_mean_dev, label="During")
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Triad"].GPP_mean_dev_10, label="Before")
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Triad"].GPP_mean_dev - all_heatwaves_df[all_heatwaves_df.top_heatwave=="Triad"].RECO_mean_dev_10, label="Difference", linestyle="--", color="red")
+plt.title("Triad Mean RECO deviance: Prior to and during heatwave event")
+plt.legend()
+plt.show()
 
+# Looking at differences for night-intensified
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Night-intensified"].NEE_mean_dev, label="During")
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Night-intensified"].NEE_mean_dev_10, label="Before")
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Night-intensified"].NEE_mean_dev_diff, label="Difference", linestyle="--", color="red")
+plt.title("Night-intensified Mean NEE deviance: Prior to and during heatwave event")
+plt.legend()
+plt.show()
+
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Night-intensified"].RECO_mean_dev, label="During")
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Night-intensified"].RECO_mean_dev_10, label="Before")
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Night-intensified"].RECO_mean_dev_diff, label="Difference", linestyle="--", color="red")
+plt.title("Night-intensified Mean RECO deviance: Prior to and during heatwave event")
+plt.legend()
+plt.show()
+
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Night-intensified"].GPP_mean_dev, label="During")
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Night-intensified"].GPP_mean_dev_10, label="Before")
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Night-intensified"].GPP_mean_dev_diff, label="Difference", linestyle="--", color="red")
+plt.title("Night-Intensified Mean GPP deviance: Prior to and during heatwave event")
+plt.legend()
+plt.show()
+
+# Looking at differences for overall heatwaves
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Overall"].NEE_mean_dev, label="During")
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Overall"].NEE_mean_dev_10, label="Before")
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Overall"].NEE_mean_dev_diff, label="Difference", linestyle="--", color="red")
+plt.title("Overall Mean NEE deviance: Prior to and during heatwave event")
+plt.legend()
+plt.show()
+
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Overall"].RECO_mean_dev, label="During")
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Overall"].RECO_mean_dev_10, label="Before")
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Overall"].RECO_mean_dev_diff, label="Difference", linestyle="--", color="red")
+plt.title("Overall Mean RECO deviance: Prior to and during heatwave event")
+plt.legend()
+plt.show()
+
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Overall"].GPP_mean_dev, label="During")
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Overall"].GPP_mean_dev_10, label="Before")
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Overall"].GPP_mean_dev_diff, label="Difference", linestyle="--", color="red")
+plt.title("Overall Mean GPP deviance: Prior to and during heatwave event")
+plt.legend()
+plt.show()
+
+# Day time heatwaves only now
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Day"].NEE_mean_dev, label="During")
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Day"].NEE_mean_dev_10, label="Before")
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Day"].NEE_mean_dev_diff, label="Difference", linestyle="--", color="red")
+plt.title("Day Mean NEE deviance: Prior to and during heatwave event")
+plt.legend()
+plt.show()
+
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Day"].RECO_mean_dev, label="During")
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Day"].RECO_mean_dev_10, label="Before")
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Day"].RECO_mean_dev_diff, label="Difference", linestyle="--", color="red")
+plt.title("Day Mean RECO deviance: Prior to and during heatwave event")
+plt.legend()
+plt.show()
+
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Day"].GPP_mean_dev, label="During")
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Day"].GPP_mean_dev_10, label="Before")
+sns.kdeplot(all_heatwaves_df[all_heatwaves_df.top_heatwave=="Day"].GPP_mean_dev_diff, label="Difference", linestyle="--", color="red")
+plt.title("Overall Mean GPP deviance: Prior to and during heatwave event")
+plt.legend()
+plt.show()
+
+
+# Making some initial tables of this
+all_heatwaves_df.groupby("top_heatwave")[['GPP_mean_dev_10','GPP_mean_dev','GPP_mean_dev_diff']].mean().reset_index().rename(columns={'GPP_mean_dev_10':'Prior','GPP_mean_dev':'During','GPP_mean_dev_diff':'Difference'})
+all_heatwaves_df.groupby("top_heatwave")[["RECO_mean_dev_10","RECO_mean_dev","RECO_mean_dev_diff"]].mean().reset_index().rename(columns={'RECO_mean_dev_10':'Prior','RECO_mean_dev':'During','RECO_mean_dev_diff':'Difference'})
+all_heatwaves_df.groupby("top_heatwave")[["NEE_mean_dev_10","NEE_mean_dev","NEE_mean_dev_diff"]].mean().reset_index().rename(columns={'NEE_mean_dev_10':'Prior','NEE_mean_dev':'During','NEE_mean_dev_diff':'Difference'})
+
+# Performing t-tests
+GPP_diff = np.array(all_heatwaves_df.GPP_mean_dev_diff)
+t_stat, p_val = stats.ttest_1samp(GPP_diff,0)
 
 ###############################################################################
 #   Visualizing a single heatwave
@@ -1116,4 +1196,23 @@ ax.set_title("GPP before, during, and after heatwaves\nColored by heatwave type"
 plt.xticks(rotation=45)
 plt.tight_layout()
 plt.show()
+
+# Calculating differences in deviance #########################################
+
+# Mean deviation by heatwave type
+from scipy import stats
+import pandas as pd
+
+GPP_ttest = ttest_by_cat(df=all_heatwaves_df,testing_var="GPP_mean_dev_diff",grouping_var="top_heatwave")
+RECO_ttest = ttest_by_cat(df=all_heatwaves_df,testing_var="RECO_mean_dev_diff",grouping_var="top_heatwave")
+NEE_ttest = ttest_by_cat(df=all_heatwaves_df,testing_var="NEE_mean_dev_diff",grouping_var="top_heatwave")
+
+# Mean deviation by season
+GPP_season_ttest = ttest_by_cat(df=all_heatwaves_df,testing_var="GPP_mean_dev_diff",grouping_var="Season")
+RECO_season_ttest = ttest_by_cat(df=all_heatwaves_df,testing_var="RECO_mean_dev_diff",grouping_var="Season")
+NEE_season_ttest = ttest_by_cat(df=all_heatwaves_df,testing_var="NEE_mean_dev_diff",grouping_var="Season")
+
+
+# Density plots
+
 

@@ -168,7 +168,8 @@ def DOY_climatology(df, var_name, smoothing_function="weighted_15"):
     df: pd.DataFrame
         DESCRIPTION. includes site, date, and daily values of variable var_name
     var_name : string
-        DESCRIPTION. variable name in df that we are calculated expected value for
+        DESCRIPTION. variable name in df that we are calculated expected value for.
+        Options include weighted_15, weighted_20, weighted_25, fourier
     smoothing_function: str
         DESCRIPTION. smoothing function you want to use for calculating expected flux value
 
@@ -213,6 +214,10 @@ def DOY_climatology(df, var_name, smoothing_function="weighted_15"):
             expected_value["expected_"+var_name] = fourier_smooth_fft(expected_value["DOY_"+var_name], n_harmonics=3)
         elif (smoothing_function == "weighted_15"):
             expected_value["expected_"+var_name] = rolling_weighted_mean(pd.Series(expected_value["DOY_"+var_name]),window=15)
+        elif (smoothing_function == "weighted_20"):
+            expected_value["expected_"+var_name] = rolling_weighted_mean(pd.Series(expected_value["DOY_"+var_name]),window=20)
+        elif (smoothing_function == "weighted_25"):
+            expected_value["expected_"+var_name] = rolling_weighted_mean(pd.Series(expected_value["DOY_"+var_name]),window=25)
         else:
             print("You didn't provide a valid smoothing function. Try weighted_15 or fourier.")
         
@@ -296,3 +301,37 @@ def add_heatwave_indicator(df,heatwaves):
     new_df.loc[new_df.heatwave_indicator.isna(),"heatwave_indicator"] = 0
     
     return new_df
+
+def symmetric_dev_calc(observed,expected):
+    '''
+    This function takes the observed and expected (calculated from DOY climatology)
+    in order to calculate the symmetric percent change or the daily flux "deviance".
+    
+    '''
+    symmetric_percent_change = 2*(observed - expected) / (abs(observed) + abs(expected))
+    return symmetric_percent_change
+
+
+def ttest_by_cat(df,testing_var,grouping_var):
+    
+    results = []
+
+    for hw, g in all_heatwaves_df.groupby(grouping_var):
+        
+        vals = pd.to_numeric(g[testing_var], errors="coerce").dropna()
+        
+        mean_val = vals.mean()
+        t_stat, p_val = stats.ttest_1samp(vals, popmean=0)
+        
+        results.append({
+            "top_heatwave": hw,
+            "mean": mean_val,
+            "t_stat": t_stat,
+            "p_value": p_val,
+            "n": len(vals)
+        })
+
+    ttest_df = pd.DataFrame(results)
+    ttest_df
+    
+    return ttest_df
