@@ -6,6 +6,8 @@ import pandas as pd
 import os
 os.chdir(path="/Users/marleeyork/Documents/project2/heatwave_definition")
 from define_heatwaves import *
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 
 def avg_QAQC_check(site_heatwave_dictionary, dates, TA_QAQC, QAQC_threshold,
                    heatwave_threshold):
@@ -241,18 +243,210 @@ def remove_invalid_heatwaves(heatwaves_dictionary, invalid_heatwaves):
     return heatwaves_dictionary
 
 
+def plot_flux_QAQC(site, date, NEE, GPP, Reco, NEE_QC, Temp):
+    # Build dataframe
+    df = pd.DataFrame({
+        "site": site,
+        "date": pd.to_datetime(date),
+        "NEE": NEE,
+        "GPP": GPP,
+        "Reco": Reco,
+        "NEE_QC": NEE_QC,
+        "Temp": Temp
+    })
+    
+    # Sort values
+    df = df.sort_values(["site", "date"])
+    
+    # Loop through sites
+    for s in df["site"].dropna().unique():
+        d = df[df["site"] == s].copy()
+        
+        fig, ax = plt.subplots(4, 1, figsize=(12, 14))
+        fig.suptitle(f"Flux QA/QC: {s}", fontsize=14)
+        
+        # 1. NEE over time, QC < 0.75 in red
+        nee_bad = d["NEE_QC"] < 0.75
+        ax[0].scatter(d.loc[~nee_bad, "date"], d.loc[~nee_bad, "NEE"], s=8, label="QC ≥ 0.75", color="grey")
+        ax[0].scatter(d.loc[nee_bad, "date"], d.loc[nee_bad, "NEE"], s=8, color="red", label="QC < 0.75")
+        ax[0].axhline(0, linestyle="--", linewidth=1)
+        ax[0].set_ylabel("NEE")
+        ax[0].set_title("NEE over time")
+        ax[0].legend()
+        
+        # 2. GPP over time, GPP < 0 in bright blue
+        gpp_neg = d["GPP"] < 0
+        ax[1].scatter(d.loc[~gpp_neg, "date"], d.loc[~gpp_neg, "GPP"], s=8, label="GPP ≥ 0", color="grey")
+        ax[1].scatter(d.loc[gpp_neg, "date"], d.loc[gpp_neg, "GPP"], s=8, color="deepskyblue", label="GPP < 0")
+        ax[1].axhline(0, linestyle="--", linewidth=1)
+        ax[1].set_ylabel("GPP")
+        ax[1].set_title("GPP over time")
+        ax[1].legend()
+        
+        # 3. Reco over time
+        ax[2].scatter(d["date"], d["Reco"], s=8,color="grey")
+        ax[2].axhline(0, linestyle="--", linewidth=1)
+        ax[2].set_ylabel("Reco")
+        ax[2].set_title("Reco over time")
+        
+        # 4. GPP by temperature, Temp < 0 in bright blue
+        temp_freezing = d["Temp"] < 0
+        ax[3].scatter(d.loc[~temp_freezing, "Temp"], d.loc[~temp_freezing, "GPP"], s=8, label="Temp ≥ 0°C",color="grey")
+        ax[3].scatter(d.loc[temp_freezing, "Temp"], d.loc[temp_freezing, "GPP"], s=8, color="deepskyblue", label="Temp < 0°C")
+        ax[3].axvline(0, linestyle="--", linewidth=1)
+        ax[3].axhline(0, linestyle="--", linewidth=1)
+        ax[3].set_xlabel("Temperature")
+        ax[3].set_ylabel("GPP")
+        ax[3].set_title("GPP vs Temperature")
+        ax[3].legend()
+        
+        plt.tight_layout()
+        plt.show()
+        
+def plot_flux_QAQC_to_pdf(site, date, NEE, GPP, Reco, NEE_QC, Temp, heatwave,
+                          output_pdf="flux_QAQC_all_sites.pdf"):
+    """
+    Create one multi-page PDF with QA/QC plots for each site.
 
+    Parameters
+    ----------
+    site : array-like
+        Site identifier for each observation.
+    date : array-like
+        Dates for each observation.
+    NEE : array-like
+        Net ecosystem exchange values.
+    GPP : array-like
+        Gross primary productivity values.
+    Reco : array-like
+        Ecosystem respiration values.
+    NEE_QC : array-like
+        NEE quality control values.
+    Temp : array-like
+        Temperature values.
+    heatwave : array-like
+        Heatwave indicator (1 = heatwave point, otherwise not).
+    output_pdf : str
+        Output PDF filename.
+    """
 
+    df = pd.DataFrame({
+        "site": site,
+        "date": pd.to_datetime(date),
+        "NEE": NEE,
+        "GPP": GPP,
+        "Reco": Reco,
+        "NEE_QC": NEE_QC,
+        "Temp": Temp,
+        "heatwave": heatwave
+    })
 
+    df = df.sort_values(["site", "date"])
 
+    def plot_with_heatwave_outline(ax, x, y, bad_qc_mask, heatwave_mask,
+                                   x_label="", y_label="", title="",
+                                   add_hline_zero=False, add_vline_zero=False):
+        # Base colors: red if QC < 0.75, black otherwise
+        colors = ["red" if bad else "lightgrey" for bad in bad_qc_mask]
 
+        # Plot all points
+        ax.scatter(x, y, c=colors, s=10, alpha=0.7, linewidths=0)
 
+        # Overlay heatwave points with bold black outline
+        hw = heatwave_mask.fillna(False)
+        ax.scatter(
+            x[hw], y[hw],
+            facecolors="none",
+            edgecolors="black",
+            s=42,
+            linewidths=1.4
+        )
 
+        if add_hline_zero:
+            ax.axhline(0, linestyle="--", linewidth=1, color="gray")
+        if add_vline_zero:
+            ax.axvline(0, linestyle="--", linewidth=1, color="gray")
 
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(y_label)
+        ax.set_title(title)
 
+    with PdfPages(output_pdf) as pdf:
+        for s in sorted(df["site"].dropna().unique()):
+            d = df[df["site"] == s].copy()
 
+            bad_qc = d["NEE_QC"] < 0.75
+            heatwave_mask = d["heatwave"] == 1
 
+            fig, ax = plt.subplots(4, 1, figsize=(12, 14))
+            fig.suptitle(f"Flux QA/QC: {s}", fontsize=14)
 
+            # 1. NEE over time
+            plot_with_heatwave_outline(
+                ax=ax[0],
+                x=d["date"],
+                y=d["NEE"],
+                bad_qc_mask=bad_qc,
+                heatwave_mask=heatwave_mask,
+                y_label="NEE",
+                title="NEE over time",
+                add_hline_zero=True
+            )
 
+            # 2. GPP over time
+            plot_with_heatwave_outline(
+                ax=ax[1],
+                x=d["date"],
+                y=d["GPP"],
+                bad_qc_mask=bad_qc,
+                heatwave_mask=heatwave_mask,
+                y_label="GPP",
+                title="GPP over time",
+                add_hline_zero=True
+            )
 
+            # 3. Reco over time
+            plot_with_heatwave_outline(
+                ax=ax[2],
+                x=d["date"],
+                y=d["Reco"],
+                bad_qc_mask=bad_qc,
+                heatwave_mask=heatwave_mask,
+                y_label="Reco",
+                title="Reco over time",
+                add_hline_zero=False
+            )
 
+            # 4. GPP vs temperature
+            plot_with_heatwave_outline(
+                ax=ax[3],
+                x=d["Temp"],
+                y=d["GPP"],
+                bad_qc_mask=bad_qc,
+                heatwave_mask=heatwave_mask,
+                x_label="Temperature",
+                y_label="GPP",
+                title="GPP vs Temperature",
+                add_hline_zero=False,
+                add_vline_zero=True
+            )
+
+            # Legend on first panel only
+            legend_handles = [
+                plt.Line2D([], [], marker='o', linestyle='None',
+                           markerfacecolor='black', markeredgecolor='black',
+                           markersize=5, label='QC ≥ 0.75'),
+                plt.Line2D([], [], marker='o', linestyle='None',
+                           markerfacecolor='red', markeredgecolor='red',
+                           markersize=5, label='QC < 0.75'),
+                plt.Line2D([], [], marker='o', linestyle='None',
+                           markerfacecolor='none', markeredgecolor='black',
+                           markeredgewidth=1.4, markersize=7, label='Heatwave = 1')
+            ]
+            ax[0].legend(handles=legend_handles, loc="best")
+
+            plt.tight_layout(rect=[0, 0, 1, 0.97])
+            pdf.savefig(fig)
+            plt.close(fig)
+
+    print(f"Saved QA/QC plots to {output_pdf}")

@@ -3,9 +3,11 @@ This script runs initial analysis of heatwave impacts on carbon cycling.
 Some things I'm interested in: comparison of GPP before, during, and after
 heatwaves.
 '''
+
 import os
+os.chdir("/Users/marleeyork/Documents/project2")
+import auxiliary
 os.chdir("/Users/marleeyork/Documents/project2/Analysis")
-import summaries_functions
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
@@ -15,102 +17,6 @@ from scipy import stats
 import visualization_functions
 import seaborn as sns
 
-
-# Lets load in the data
-all_heatwaves_df = pd.read_csv("/Users/marleeyork/Documents/project2/data/heatwaves/all_heatwaves_df.csv")
-df = pd.read_csv("/Users/marleeyork/Documents/project2/data/cleaned/AMF_DD.csv")
-
-# Correcting datetime variables
-all_heatwaves_df["start_dates"] = pd.to_datetime(all_heatwaves_df.start_dates)
-all_heatwaves_df["end_dates"] = pd.to_datetime(all_heatwaves_df.end_dates)
-df["date"] = pd.to_datetime(df.date)
-
-# Change flux names
-df = df.iloc[:,1:]
-df.columns = ['date','TA_F','SW_IN_F','VPD_F','P_F','NEE','RECO','GPP','Site','IGBP']
-
-# Also reading in the min/max/mean heatwaves
-heatwave_df = pd.read_csv("/Users/marleeyork/Documents/project2/data/heatwaves/heatwaves_df.csv")
-
-# Relabel so that the min/max/mean heatwaves can be used in the calc_flux_avg()
-heatwave_df['start_dates'] = pd.to_datetime(heatwave_df.start_dates)
-heatwave_df['end_dates'] = pd.to_datetime(heatwave_df.end_dates)
-heatwave_df = heatwave_df.iloc[:,1:]
-heatwave_df.columns = ['Site','top_heatwave','start_dates','end_dates','duration','QAQC_flag']
-
-## I want to do a little cleaning on this.
-# If the data is missing, replace with NA
-df.loc[df.GPP==-9999,'GPP'] = pd.NA
-df.loc[df.RECO==-9999,'RECO'] = pd.NA
-df.loc[df.NEE==-9999,'NEE'] = pd.NA
-
-# Now replace negative GPP with 0
-df.loc[df.GPP<0, 'GPP'] = 0
-
-# Reduce df to just those sites we have full heatwave classification for
-df = df[df.Site.isin(all_heatwaves_df.Site.unique())]
-
-# Calculating deviance from the expected flux
-# Calculations for average flux before, during, and after heatwave are later in the script
-df = add_heatwave_indicator(df,all_heatwaves_df)
-df = DOY_climatology(df,var_name="GPP",smoothing_function="weighted_25")
-df = DOY_climatology(df,var_name="RECO",smoothing_function="weighted_25")
-df = DOY_climatology(df,var_name="NEE",smoothing_function="weighted_25")
-
-# Calculate heatwave deviance using symmetric percent change
-df["GPP_dev"] = symmetric_dev_calc(observed=df["GPP"],expected=df["expected_GPP"])
-df["RECO_dev"] = symmetric_dev_calc(observed=df["RECO"],expected=df["expected_RECO"])
-df["NEE_dev"] = symmetric_dev_calc(observed=df["NEE"],expected=df["expected_NEE"])
-
-# Calculating the total deviance for each heatwave, and for 10 days prior to heatwave
-all_heatwaves_df["GPP_cum_dev"] = [pd.NA] * len(all_heatwaves_df)
-all_heatwaves_df["RECO_cum_dev"] = [pd.NA] * len(all_heatwaves_df)
-all_heatwaves_df["NEE_cum_dev"] = [pd.NA] * len(all_heatwaves_df)
-all_heatwaves_df["GPP_mean_dev"] = [pd.NA] * len(all_heatwaves_df)
-all_heatwaves_df["RECO_mean_dev"] = [pd.NA] * len(all_heatwaves_df)
-all_heatwaves_df["NEE_mean_dev"] = [pd.NA] * len(all_heatwaves_df)
-
-all_heatwaves_df["GPP_cum_dev_10"] = [pd.NA] * len(all_heatwaves_df)
-all_heatwaves_df["RECO_cum_dev_10"] = [pd.NA] * len(all_heatwaves_df)
-all_heatwaves_df["NEE_cum_dev_10"] = [pd.NA] * len(all_heatwaves_df)
-all_heatwaves_df["GPP_mean_dev_10"] = [pd.NA] * len(all_heatwaves_df)
-all_heatwaves_df["RECO_mean_dev_10"] = [pd.NA] * len(all_heatwaves_df)
-all_heatwaves_df["NEE_mean_dev_10"] = [pd.NA] * len(all_heatwaves_df)
-
-for idx,row in all_heatwaves_df.iterrows():
-    # Select start and end dates for heatwave and same length of days but ten days prior
-    start = row["start_dates"]
-    end = row["end_dates"]
-    duration = end - start
-    prior_start = start - pd.Timedelta(10,unit="days") - duration
-    prior_end = end - pd.Timedelta(10,unit="days") - duration
-    dates = pd.date_range(start,end)
-    prior_dates = pd.date_range(prior_start,prior_end)
-    site = row["Site"]
-    
-    # Isolate these days in dataframe of fluxes
-    this_hw = df[(df.Site==site) & (df.date.isin(dates))]
-    before_hw = df[(df.Site==site) & (df.date.isin(prior_dates))]
-    
-    # Calculate cumulative and mean deviation for GPP and RECO
-    all_heatwaves_df.loc[idx,"GPP_cum_dev"] = this_hw.GPP_dev.sum()
-    all_heatwaves_df.loc[idx,"RECO_cum_dev"] = this_hw.RECO_dev.sum()
-    all_heatwaves_df.loc[idx,"NEE_cum_dev"] = this_hw.NEE_dev.sum()
-    all_heatwaves_df.loc[idx,"GPP_mean_dev"] = this_hw.GPP_dev.mean()
-    all_heatwaves_df.loc[idx,"RECO_mean_dev"] = this_hw.RECO_dev.mean()
-    all_heatwaves_df.loc[idx,"NEE_mean_dev"] = this_hw.NEE_dev.mean()
-    
-    all_heatwaves_df.loc[idx,"GPP_cum_dev_10"] = before_hw.GPP_dev.sum()
-    all_heatwaves_df.loc[idx,"RECO_cum_dev_10"] = before_hw.RECO_dev.sum()
-    all_heatwaves_df.loc[idx,"NEE_cum_dev_10"] = before_hw.NEE_dev.sum()
-    all_heatwaves_df.loc[idx,"GPP_mean_dev_10"] = before_hw.GPP_dev.mean()
-    all_heatwaves_df.loc[idx,"RECO_mean_dev_10"] = before_hw.RECO_dev.mean()
-    all_heatwaves_df.loc[idx,"NEE_mean_dev_10"] = before_hw.NEE_dev.mean()
-
-# Now we can compare deviance in heatwaves before and during heatwaves
-all_heatwaves_df["GPP_mean_dev_diff"] = all_heatwaves_df["GPP_mean_dev"] - all_heatwaves_df["GPP_mean_dev_10"]
-all_heatwaves_df["RECO_mean_dev_diff"] = all_heatwaves_df["RECO_mean_dev"] - all_heatwaves_df["RECO_mean_dev_10"]
-all_heatwaves_df["NEE_mean_dev_diff"] = all_heatwaves_df["NEE_mean_dev"] - all_heatwaves_df["NEE_mean_dev_10"]
 
 ###############################################################################
 #   Working with deviance from expected flux

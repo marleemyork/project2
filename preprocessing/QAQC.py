@@ -15,6 +15,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 import numpy as np
+from collections import Counter
 pd.set_option("display.max_rows", 150)
 
 ###############################################################################
@@ -837,36 +838,55 @@ final_sites.to_csv("final_site_list.csv")
 ###############################################################################
 
 # Add heatwave indicator. This is from Analysis/heatwaves_summaries.py
+df = pd.read_csv("/Users/marleeyork/Documents/project2/data/cleaned/AMF_DD.csv")
+all_heatwaves_df = pd.read_csv("/Users/marleeyork/Documents/project2/data/heatwaves/all_heatwaves_df.csv")
+df["date"] = pd.to_datetime(df["date"])
+all_heatwaves_df["start_dates"] = pd.to_datetime(all_heatwaves_df["start_dates"])
+all_heatwaves_df["end_dates"] = pd.to_datetime(all_heatwaves_df["end_dates"])
 df = add_heatwave_indicator(df,all_heatwaves_df)
 
+
+# Loading in the qaqc flag for NEE
+# Checking that all my sites have it
+find_shared_variables('/Users/marleeyork/Documents/project2/data/AMFdataDD',measures=['NEE_VUT_REF_QC'])
+NEE_qaqc = loadAMF(path = "/Users/marleeyork/Documents/project2/data/AMFdataDD",measures=['TIMESTAMP','NEE_VUT_REF_QC'])
+NEE_qaqc.columns = ["date","NEE_VUT_REF_QC","Site"]
+
+sns.kdeplot(data=NEE_qaqc[NEE_qaqc.NEE_VUT_REF_QC >= 0], x="NEE_VUT_REF_QC", fill=True)
+
+df = pd.merge(df,NEE_qaqc,on=["Site","date"],how="left")
+df = df.drop_duplicates()
+
+# columns you want treated as numeric
+cols = ["NEE_VUT_REF", "GPP_NT_VUT_REF", "RECO_NT_VUT_REF", "TA_F"]
+
+# replace sentinel values with np.nan, not pd.NA
+df[cols] = df[cols].replace(-9999, np.nan)
+
+# coerce anything else non-numeric to NaN too
+df[cols] = df[cols].apply(pd.to_numeric, errors="coerce")
+
+# Removing any sites that we don't have heatwaves fit for
+df = df.loc[df.Site.isin(all_heatwaves_df.Site),:]
+
 # Read in the csv for those sites that have all 3 heatwave types
-for site in df.Site.unique():
+
+plot_flux_QAQC_to_pdf(
+    site=df["Site"],
+    date=df["date"],
+    NEE=df["NEE_VUT_REF"],
+    GPP=df["GPP_NT_VUT_REF"],
+    Reco=df["RECO_NT_VUT_REF"],
+    NEE_QC=df["NEE_VUT_REF_QC"],
+    Temp=df["TA_F"],
+    heatwave=df["heatwave_indicator"],
+    output_pdf="/Users/marleeyork/Documents/project2/preprocessing/flux_QAQC_all_sites.pdf"
+)
+
     
-    site_data = df[df.Site==site]
-    site_hw = df[(df.heatwave_indicator==1) & (df.Site==site)]
     
-    plt.subplots()
-
-    # Scatter
-    plt.scatter(site_data.TA_F, site_data.GPP, s=.5, alpha=.5)
-    plt.scatter(site_hw.TA_F,site_hw.GPP,s=.5,c="orange")
-
-    # Fit linear regression
-    x = site_data.TA_F.values
-    y = site_data.GPP.values
     
-    mask = ~np.isnan(x) & ~np.isnan(y)   # important if flux data has NA
-    m, b = np.polyfit(x[mask], y[mask], 1)
 
-    # Regression line
-    x_line = np.linspace(x[mask].min(), x[mask].max(), 100)
-    y_line = m * x_line + b
-    plt.plot(x_line, y_line, c="red")
-
-    plt.title(site)
-    plt.xlabel("Temperature")
-    plt.ylabel("GPP")
-    plt.show()
-
-    print(f"Slope: {m}, Intercept: {b}")
-    input("Press [enter] to continue...")
+    
+    
+    
